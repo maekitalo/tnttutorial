@@ -72,3 +72,72 @@ the source for the `configure` script. The _Makefile.am_ tells the build system,
 what to build. There you can find a reference to our _hello.ecpp_ and
 _main.cpp_. Also there is a section for static resources. _hello.css_ can be
 found there.
+
+Adding more content
+-------------------
+A single web page is fine, but not really useful. We want to add another page.
+So lets create a second _ecpp_ file. Create a file page2.ecpp with some html
+content.
+
+To include the new page to the application we add it to our _Makefile.am_. There
+is a variable called _ecppSources_. Add it there. Note that you can put it just
+after the _hello.ecpp_ separated by space or add a backslash at the end of the
+line to continue on the next. See a autotools tutorial for more details if you
+want.
+
+When you now build the application with _make_, and run it, there is a new page,
+which can be found under the url _http://localhost:8000/page2_. If you want, you
+can add a link to that page into the _hello.ecpp_ and on _page2_ a link back to
+_hello_. And note that you can find the hello page also under the url
+_http://localhost:8000/hello_.
+
+I think it is time to find out, why it is so. I already mentioned the mappings.
+They tell tntnet, which page to call when a request arrives. Of course the url
+is the key here.
+
+Our pages are compiled with the _ecppc_ compiler. It gives all pages a name. By
+default it is just the basename of the file, so that our _hello.ecpp_ is named
+_hello_. It is the component id of the page. And similar _page2.ecpp_ is named
+_page2_.
+
+Now we look at the _main.cpp_. There we find calls to the method `mapUrl` of the
+`tnt::Tntnet` object. It takes 2 parameters. A regular expression, which is
+executed against a incoming url of a request and a component name, which to call
+if the expression matches.
+
+There are currently 3 mappings. We skip the first for now. The second has a
+regular expression _^/$_. That matches exactly one slash. The url of a http
+request start always with a slash. This is mapped to the component with the name
+_hello_, which is our page generated from _hello.ecpp_.
+
+The third mapping is a little more sophisticated. The expression is _^/(.*)_,
+which actually matches everything. But the part after the first slash is
+collected since it is in brackets. The component id, is _$1_, which is a back
+reference to the first bracketed expression. So the url _/hello_ matches the
+expression and _$1_ is set to _hello_ so that again our _hello.ecpp_ is called.
+And _/page1_ calls _page1.ecpp_.
+
+Now we come back to the first mapping. It maps static resources.
+
+If you look at _Makefile.am_ you can find a rule to generate a component called
+_resources_. The flag _-bb_ tells _ecppc_ to build a so called multi binary
+component. It creates on component from many static source files. In those
+source files no tags are interpreted. This is useful for all static files like
+_css_ or _images_. It would be fatal if _ecppc_ would interpret a graphics image
+and by chance find something, which looks like a _ecpp_ tag and tries to do
+something with it.
+
+Since now all static files have a single name _resources_ we somehow have to
+tell tntnet, which file to fetch from those. If you look again at _main.cpp_ and
+the first mapping you can see a call to the method `setPathInfo`. The method
+`mapUrl` returns a mapping object, which can be modified.
+
+The expression _/(.*)_ is the same as in the third mapping and hence matches
+everything. This time the component to call is always _resources_ but the
+mapping gets a additional information using this `setPathInfo`. In our case the
+path is then _resources/$1_. So that the url _/hello.css_ sets the path info to
+_resources/hello.css_. And indeed you can find such a file in our project and
+also in our _Makefile.am_ under _staticSources_.
+
+Note that _ecppc_ automatically sets a proper content type depending on the
+extension of the file to make the browser happy.
